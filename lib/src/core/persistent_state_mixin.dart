@@ -29,6 +29,7 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
   final Map<String, StreamSubscription> _subscriptions = {};
   final Map<String, dynamic> _persistentValues = {};
   bool _isHydrated = false;
+  bool _isInitializing = false;
 
   /// Override this getter to define which fields should be persistent.
   ///
@@ -60,26 +61,93 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
       throw ArgumentError('Unknown persistent field: $fieldName');
     }
 
-    return _persistentValues[fieldName] ?? config.defaultValue;
+    final value = _persistentValues[fieldName];
+
+    try {
+      // If value is null, return default value
+      if (value == null) {
+        return config.defaultValue as T;
+      }
+
+      // If value is already the correct type, return it
+      if (value is T) {
+        return value;
+      }
+
+      // Handle type conversions
+      return _safeCastValue<T>(value, config.defaultValue);
+    } catch (e) {
+      debugPrint('Failed to cast value for field $fieldName: $e');
+      return config.defaultValue as T;
+    }
   }
 
-  /// Set the value of a persistent field.
-  ///
-  /// This method updates the local cache, persists the value, and triggers
-  /// a rebuild if the value has changed. If validation is configured for
-  /// the field, it will be executed before setting the value.
-  ///
-  /// @param fieldName the name of the persistent field
-  /// @param value the new value to set
-  /// @throws ArgumentError if the field is unknown or validation fails
+  /// Safely cast a value to the target type with fallback to default.
+  T _safeCastValue<T>(dynamic value, dynamic defaultValue) {
+    try {
+      // Handle Map type conversions
+      if (T.toString().startsWith('Map<String,') && value is Map) {
+        if (T.toString().contains('bool')) {
+          return Map<String, bool>.from(value) as T;
+        } else if (T.toString().contains('int')) {
+          return Map<String, int>.from(value) as T;
+        } else if (T.toString().contains('String')) {
+          return Map<String, String>.from(value) as T;
+        } else {
+          return Map<String, dynamic>.from(value) as T;
+        }
+      }
+
+      // Handle List type conversions
+      if (T.toString().startsWith('List<') && value is List) {
+        if (T.toString().contains('String')) {
+          return List<String>.from(value.map((e) => e.toString())) as T;
+        } else if (T.toString().contains('int')) {
+          return List<int>.from(value.where((e) => e is num).map((e) => (e as num).toInt())) as T;
+        } else {
+          return List.from(value) as T;
+        }
+      }
+
+      // Handle primitive type conversions
+      if (T == String) {
+        return value.toString() as T;
+      } else if (T == int && value is num) {
+        return value.toInt() as T;
+      } else if (T == double && value is num) {
+        return value.toDouble() as T;
+      } else if (T == bool) {
+        if (value is bool) return value as T;
+        if (value is String) {
+          return (value.toLowerCase() == 'true') as T;
+        }
+        return (value == 1) as T;
+      }
+
+      // Attempt direct cast
+      return value as T;
+    } catch (e) {
+      debugPrint('Type conversion failed for value $value to type $T: $e');
+      return defaultValue as T;
+    }
+  }
+
+  /// Set the value of a persistent field with validation and error handling.
   Future<void> setPersistentValue<T>(String fieldName, T value) async {
     final config = persistentFields[fieldName];
     if (config == null) {
       throw ArgumentError('Unknown persistent field: $fieldName');
     }
 
-    if (config.validator != null && !config.validator!(value)) {
-      throw ArgumentError('Validation failed for field: $fieldName');
+    if (config.validator != null) {
+      try {
+        if (!config.validator!(value)) {
+          throw ArgumentError('Validation failed for field: $fieldName');
+        }
+      } catch (e) {
+        debugPrint('Validation error for field $fieldName: $e');
+        throw ArgumentError('Validation failed for field: $fieldName');
+      }
     }
 
     final oldValue = _persistentValues[fieldName];
@@ -89,18 +157,28 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
 
     _persistentValues[fieldName] = value;
 
-    await stateManager.setValue(
-      config.storageKey,
-      value,
-      debounce: config.debounce,
-    );
+    try {
+      await stateManager.setValue(
+        config.storageKey,
+        value,
+        debounce: config.debounce,
+      );
 
-    if (mounted) {
-      setState(() {});
-    }
+      if (mounted) {
+        setState(() {});
+      }
 
-    if (config.onChanged != null) {
-      config.onChanged!(value);
+      if (config.onChanged != null) {
+        try {
+          config.onChanged!(value);
+        } catch (e) {
+          debugPrint('OnChanged callback error for field $fieldName: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to persist field $fieldName: $e');
+      _persistentValues[fieldName] = oldValue;
+      rethrow;
     }
   }
 
@@ -110,16 +188,32 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
   /// It sets up listeners for reactive updates and loads persisted values.
   @protected
   Future<void> initializePersistence() async {
-    if (!stateManager.isInitialized) {
-      await stateManager.initialize();
+    if (_isInitializing || _isHydrated) {
+      return;
     }
 
-    await _hydrateValues();
-    _setupListeners();
-    _isHydrated = true;
+    _isInitializing = true;
 
-    if (mounted) {
-      setState(() {});
+    try {
+      if (!stateManager.isInitialized) {
+        await stateManager.initialize();
+      }
+
+      await _hydrateValues();
+      _setupListeners();
+      _isHydrated = true;
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Failed to initialize persistence: $e');
+      _isHydrated = true;
+      if (mounted) {
+        setState(() {});
+      }
+    } finally {
+      _isInitializing = false;
     }
   }
 
@@ -154,8 +248,16 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
     }
 
     return stateManager
-        .getValueStream<T>(config.storageKey)
-        .map((value) => value ?? config.defaultValue as T);
+        .getValueStream(config.storageKey)
+        .map((value) {
+          try {
+            return _safeCastValue<T>(value, config.defaultValue);
+          } catch (e) {
+            debugPrint('Failed to cast value for field $fieldName: $e');
+            return config.defaultValue as T;
+          }
+        })
+        .distinct();
   }
 
   /// Reset a persistent field to its default value.
@@ -170,15 +272,24 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
       throw ArgumentError('Unknown persistent field: $fieldName');
     }
 
-    await stateManager.removeValue(config.storageKey);
-    _persistentValues[fieldName] = config.defaultValue;
+    try {
+      await stateManager.removeValue(config.storageKey);
+      _persistentValues[fieldName] = config.defaultValue;
 
-    if (mounted) {
-      setState(() {});
-    }
+      if (mounted) {
+        setState(() {});
+      }
 
-    if (config.onChanged != null) {
-      config.onChanged!(config.defaultValue);
+      if (config.onChanged != null) {
+        try {
+          config.onChanged!(config.defaultValue);
+        } catch (e) {
+          debugPrint('OnChanged callback error during reset for field $fieldName: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to reset field $fieldName: $e');
+      rethrow;
     }
   }
 
@@ -187,25 +298,42 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
   /// This method removes all persisted values for this widget
   /// and resets all fields to their configured defaults.
   Future<void> resetAllPersistentFields() async {
-    final futures = persistentFields.keys.map(resetPersistentField);
+    final futures = persistentFields.keys.map((fieldName) async {
+      try {
+        await resetPersistentField(fieldName);
+      } catch (e) {
+        debugPrint('Failed to reset field $fieldName: $e');
+      }
+    });
     await Future.wait(futures);
   }
 
   Future<void> _hydrateValues() async {
     final configs = persistentFields;
-    final storageKeys = configs.values.map((c) => c.storageKey).toList();
-
-    for (final config in configs.values) {
-      stateManager.registerDefault(config.storageKey, config.defaultValue);
-    }
-
-    final hydratedValues = await stateManager.hydrateKeys(storageKeys);
 
     for (final entry in configs.entries) {
       final fieldName = entry.key;
       final config = entry.value;
-      final value = hydratedValues[config.storageKey] ?? config.defaultValue;
-      _persistentValues[fieldName] = value;
+
+      try {
+        stateManager.registerDefault(config.storageKey, config.defaultValue);
+      } catch (e) {
+        debugPrint('Failed to register default for field $fieldName: $e');
+      }
+    }
+
+
+    for (final entry in configs.entries) {
+      final fieldName = entry.key;
+      final config = entry.value;
+
+      try {
+        final value = await stateManager.getValue(config.storageKey);
+        _persistentValues[fieldName] = value ?? config.defaultValue;
+      } catch (e) {
+        debugPrint('Failed to hydrate field $fieldName: $e');
+        _persistentValues[fieldName] = config.defaultValue;
+      }
     }
   }
 
@@ -214,22 +342,41 @@ mixin PersistentStateMixin<T extends StatefulWidget> on State<T> {
       final fieldName = entry.key;
       final config = entry.value;
 
-      final subscription =
-          stateManager.getValueStream(config.storageKey).listen((value) {
-        if (value != _persistentValues[fieldName]) {
-          _persistentValues[fieldName] = value ?? config.defaultValue;
+      try {
+        final subscription = stateManager
+            .getValueStream(config.storageKey)
+            .listen(
+          (value) {
+            try {
+              final newValue = value ?? config.defaultValue;
+              if (newValue != _persistentValues[fieldName]) {
+                _persistentValues[fieldName] = newValue;
 
-          if (mounted) {
-            setState(() {});
-          }
+                if (mounted) {
+                  setState(() {});
+                }
 
-          if (config.onChanged != null) {
-            config.onChanged!(value ?? config.defaultValue);
-          }
-        }
-      });
+                if (config.onChanged != null) {
+                  try {
+                    config.onChanged!(newValue);
+                  } catch (e) {
+                    debugPrint('OnChanged callback error for field $fieldName: $e');
+                  }
+                }
+              }
+            } catch (e) {
+              debugPrint('Error processing value change for field $fieldName: $e');
+            }
+          },
+          onError: (error) {
+            debugPrint('Stream error for field $fieldName: $error');
+          },
+        );
 
-      _subscriptions[fieldName] = subscription;
+        _subscriptions[fieldName] = subscription;
+      } catch (e) {
+        debugPrint('Failed to setup listener for field $fieldName: $e');
+      }
     }
   }
 }

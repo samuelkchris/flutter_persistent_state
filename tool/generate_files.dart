@@ -42,7 +42,7 @@ class PackageGenerator {
       'lib/src/widgets', 'lib/src/utils', 'test', 'test/unit',
       'test/widget', 'test/integration', 'test/mocks', 'example',
       'example/lib', 'example/lib/screens', 'example/lib/widgets',
-      'example/test', 'docs', 'docs/api', 'docs/guides', 'docs/examples',
+      'example/test', 'doc', 'doc/api', 'doc/guides', 'doc/examples',
       'tool', 'tool/scripts', '.github', '.github/workflows',
     ];
     
@@ -126,9 +126,9 @@ class PackageGenerator {
     print('\n📚 Creating documentation files...');
     
     final docFiles = {
-      'docs/api/index.md': 'API documentation index',
-      'docs/guides/getting_started.md': 'Getting started guide',
-      'docs/examples/basic_usage.md': 'Basic usage examples',
+      'doc/api/index.md': 'API documentation index',
+      'doc/guides/getting_started.md': 'Getting started guide',
+      'doc/examples/basic_usage.md': 'Basic usage examples',
     };
     
     for (final entry in docFiles.entries) {

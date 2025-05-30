@@ -3,19 +3,11 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_persistent_state/flutter_persistent_state.dart';
 
-/// Complete example application demonstrating the persistent state package.
+/// Modern beautiful example application showcasing persistent state.
 ///
-/// This app showcases all major features of the package including:
-/// - Automatic field persistence with annotations
-/// - Navigation state management
-/// - Text field integration with auto-save
-/// - Form handling with validation
-/// - Settings management
-/// - User onboarding flow
-/// - Search functionality with history
-///
-/// The app demonstrates how to eliminate boilerplate while maintaining
-/// clean, readable code and excellent user experience.
+/// This app demonstrates all features of the persistent state package
+/// with a beautiful, modern Material 3 design that feels premium
+/// and intuitive to use.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -23,13 +15,13 @@ void main() async {
     excludedRoutes: {'/', '/onboarding'},
   );
 
-  runApp(ExampleApp(observer: navigationObserver));
+  runApp(ModernPersistentStateApp(observer: navigationObserver));
 }
 
-class ExampleApp extends StatelessWidget {
+class ModernPersistentStateApp extends StatelessWidget {
   final PersistentNavigationObserver observer;
 
-  const ExampleApp({super.key, required this.observer});
+  const ModernPersistentStateApp({super.key, required this.observer});
 
   @override
   Widget build(BuildContext context) {
@@ -37,39 +29,76 @@ class ExampleApp extends StatelessWidget {
       observer: observer,
       restoreOnStart: true,
       maxRouteAge: const Duration(days: 30),
-      shouldRestore: (routeData) {
-        final routeName = routeData['name'] as String?;
-        return routeName != null && routeName != '/onboarding';
-      },
-      onRestorationComplete: (restored, routeName) {
-        debugPrint('Navigation restored: $restored to $routeName');
-      },
       child: MaterialApp(
         title: 'Persistent State Demo',
         navigatorObservers: [observer],
         initialRoute: '/',
+        theme: _buildLightTheme(),
+        darkTheme: _buildDarkTheme(),
         routes: {
           '/': (context) => const SplashScreen(),
-          '/onboarding': (context) => const OnboardingScreen(),
+          '/onboarding': (context) => const OnboardingFlow(),
           '/home': (context) => const HomeScreen(),
           '/profile': (context) => const ProfileScreen(),
           '/settings': (context) => const SettingsScreen(),
-          '/search': (context) => const SearchScreen(),
+          '/preferences': (context) => const PreferencesScreen(),
         },
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
+      ),
+    );
+  }
+
+  ThemeData _buildLightTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6750A4),
+        brightness: Brightness.light,
+      ),
+      appBarTheme: const AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  ThemeData _buildDarkTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6750A4),
+        brightness: Brightness.dark,
+      ),
+      appBarTheme: const AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.grey.shade800),
         ),
       ),
     );
   }
 }
 
-/// Splash screen that handles initial app setup and navigation.
-///
-/// This screen checks if the user has completed onboarding and
-/// either navigates to the onboarding flow or the main app.
-/// It demonstrates how to use persistent state for app-level decisions.
+/// Beautiful animated splash screen with persistent state initialization.
 @PersistentState()
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -79,7 +108,12 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with PersistentStateMixin<SplashScreen> {
+    with PersistentStateMixin<SplashScreen>, TickerProviderStateMixin {
+
+  late AnimationController _fadeController;
+  late AnimationController _scaleController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   Map<String, PersistentFieldConfig> get persistentFields => {
@@ -93,13 +127,40 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
     _initializeApp();
   }
 
-  @override
-  void dispose() {
-    disposePersistence();
-    super.dispose();
+  void _setupAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.elasticOut,
+    ));
+
+    _fadeController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _scaleController.forward();
+    });
   }
 
   Future<void> _initializeApp() async {
@@ -107,6 +168,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     await setPersistentValue('lastLaunchTime', DateTime.now().millisecondsSinceEpoch);
 
+    // Beautiful loading delay for animation
     await Future.delayed(const Duration(seconds: 2));
 
     if (mounted) {
@@ -121,20 +183,99 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   @override
+  void dispose() {
+    _fadeController.dispose();
+    _scaleController.dispose();
+    disposePersistence();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const FlutterLogo(size: 100),
-            const SizedBox(height: 24),
-            Text(
-              'Persistent State Demo',
-              style: Theme.of(context).textTheme.headlineMedium,
+            AnimatedBuilder(
+              animation: _scaleAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.storage_rounded,
+                      size: 64,
+                      color: Colors.white,
+                    ),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            const CircularProgressIndicator(),
+            const SizedBox(height: 32),
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                children: [
+                  Text(
+                    'Persistent State',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Beautiful state persistence for Flutter',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 48),
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -142,42 +283,41 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-/// Onboarding screen with persistent progress tracking.
-///
-/// This screen demonstrates how to track user progress through
-/// a multi-step onboarding flow with automatic state persistence.
+/// Modern onboarding flow with beautiful animations and persistent progress.
 @PersistentState()
-class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+class OnboardingFlow extends StatefulWidget {
+  const OnboardingFlow({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen>
-    with PersistentStateMixin<OnboardingScreen> {
+class _OnboardingFlowState extends State<OnboardingFlow>
+    with PersistentStateMixin<OnboardingFlow>, TickerProviderStateMixin {
 
   final PageController _pageController = PageController();
+  late AnimationController _progressController;
 
   @override
   Map<String, PersistentFieldConfig> get persistentFields => {
     'currentPage': persistentField('onboarding_page', defaultValue: 0),
     'userName': persistentField('onboarding_name', defaultValue: ''),
     'userPreferences': persistentField('onboarding_prefs',
-        defaultValue: <String, bool>{}),
+        defaultValue: <String, bool>{
+          'notifications': true,
+          'darkMode': false,
+          'analytics': false,
+        }),
   };
 
   @override
   void initState() {
     super.initState();
+    _progressController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
     _initializeOnboarding();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    disposePersistence();
-    super.dispose();
   }
 
   Future<void> _initializeOnboarding() async {
@@ -191,6 +331,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         curve: Curves.easeInOut,
       );
     }
+    _updateProgress();
+  }
+
+  void _updateProgress() {
+    final currentPage = getPersistentValue<int>('currentPage');
+    _progressController.animateTo((currentPage + 1) / 3);
   }
 
   void _nextPage() {
@@ -200,21 +346,30 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       setPersistentValue('currentPage', nextPage);
       _pageController.animateToPage(
         nextPage,
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
+      _updateProgress();
+      HapticFeedback.lightImpact();
     } else {
       _completeOnboarding();
     }
   }
 
   void _completeOnboarding() async {
-    final splashState = PersistentStateManager.instance;
-    await splashState.setValue('has_completed_onboarding', true);
+    await PersistentStateManager.instance.setValue('has_completed_onboarding', true);
 
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/home');
     }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _progressController.dispose();
+    disposePersistence();
+    super.dispose();
   }
 
   @override
@@ -224,13 +379,65 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
 
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildProgressHeader(),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildWelcomePage(),
+                  _buildNamePage(),
+                  _buildPreferencesPage(),
+                ],
+              ),
+            ),
+            _buildBottomNavigation(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressHeader() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
         children: [
-          _buildWelcomePage(),
-          _buildNamePage(),
-          _buildPreferencesPage(),
+          Row(
+            children: [
+              Text(
+                'Setup',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${getPersistentValue<int>('currentPage') + 1}/3',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          AnimatedBuilder(
+            animation: _progressController,
+            builder: (context, child) {
+              return LinearProgressIndicator(
+                value: _progressController.value,
+                backgroundColor: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                minHeight: 6,
+              );
+            },
+          ),
         ],
       ),
     );
@@ -242,25 +449,96 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.waving_hand, size: 100, color: Colors.orange),
-          const SizedBox(height: 24),
+          Container(
+            width: 160,
+            height: 160,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primaryContainer,
+                  Theme.of(context).colorScheme.secondaryContainer,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Icon(
+              Icons.waving_hand_rounded,
+              size: 80,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(height: 48),
           Text(
             'Welcome!',
-            style: Theme.of(context).textTheme.headlineLarge,
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: -1,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
-            'This app demonstrates persistent state management with zero boilerplate.',
-            style: Theme.of(context).textTheme.bodyLarge,
+            'This beautiful app demonstrates persistent state management with zero boilerplate. Your data stays perfectly synchronized across app sessions.',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              height: 1.5,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 48),
-          ElevatedButton(
-            onPressed: _nextPage,
-            child: const Text('Get Started'),
-          ),
+          _buildFeatureCards(),
         ],
       ),
+    );
+  }
+
+  Widget _buildFeatureCards() {
+    final features = [
+      {'icon': Icons.flash_on_rounded, 'title': 'Instant Sync', 'desc': 'Real-time updates'},
+      {'icon': Icons.security_rounded, 'title': 'Type Safe', 'desc': 'Compile-time safety'},
+      {'icon': Icons.auto_awesome_rounded, 'title': 'Zero Config', 'desc': 'Works out of the box'},
+    ];
+
+    return Row(
+      children: features.map((feature) => Expanded(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                feature['icon'] as IconData,
+                color: Theme.of(context).colorScheme.primary,
+                size: 28,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                feature['title'] as String,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                feature['desc'] as String,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      )).toList(),
     );
   }
 
@@ -270,30 +548,58 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.person, size: 100, color: Colors.blue),
-          const SizedBox(height: 24),
-          Text(
-            'What\'s your name?',
-            style: Theme.of(context).textTheme.headlineLarge,
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(
+              Icons.person_rounded,
+              size: 64,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
           ),
           const SizedBox(height: 32),
+          Text(
+            'What should we call you?',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Your name will be saved automatically and remembered across app sessions.',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 48),
           PersistentTextField(
             storageKey: 'onboarding_name',
-            decoration: const InputDecoration(
-              labelText: 'Enter your name',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: 'Your name',
+              hintText: 'Enter your name',
+              prefixIcon: const Icon(Icons.person_outline_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
             ),
             validator: (value) => value.trim().isEmpty ? 'Name is required' : null,
             showSaveIndicator: false,
-          ),
-          const SizedBox(height: 48),
-          ElevatedButton(
-            onPressed: () {
-              if (getPersistentValue<String>('userName').trim().isNotEmpty) {
-                _nextPage();
+            textCapitalization: TextCapitalization.words,
+            onChanged: (value) {
+              if (value.trim().isNotEmpty) {
+                HapticFeedback.selectionClick();
               }
             },
-            child: const Text('Continue'),
           ),
         ],
       ),
@@ -308,50 +614,167 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.settings, size: 100, color: Colors.green),
-          const SizedBox(height: 24),
-          Text(
-            'Set your preferences',
-            style: Theme.of(context).textTheme.headlineLarge,
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(
+              Icons.tune_rounded,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSecondaryContainer,
+            ),
           ),
           const SizedBox(height: 32),
+          Text(
+            'Customize your experience',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'These preferences will be automatically saved and applied throughout the app.',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 48),
           Card(
             child: Column(
               children: [
-                SwitchListTile(
-                  title: const Text('Enable notifications'),
+                _buildPreferenceItem(
+                  icon: Icons.notifications_rounded,
+                  title: 'Push Notifications',
+                  subtitle: 'Get notified about important updates',
                   value: preferences['notifications'] ?? true,
                   onChanged: (value) {
                     final newPrefs = Map<String, bool>.from(preferences);
                     newPrefs['notifications'] = value;
                     setPersistentValue('userPreferences', newPrefs);
+                    HapticFeedback.lightImpact();
                   },
                 ),
-                SwitchListTile(
-                  title: const Text('Dark mode'),
+                const Divider(height: 1),
+                _buildPreferenceItem(
+                  icon: Icons.dark_mode_rounded,
+                  title: 'Dark Mode',
+                  subtitle: 'Use dark theme for better night viewing',
                   value: preferences['darkMode'] ?? false,
                   onChanged: (value) {
                     final newPrefs = Map<String, bool>.from(preferences);
                     newPrefs['darkMode'] = value;
                     setPersistentValue('userPreferences', newPrefs);
+                    HapticFeedback.lightImpact();
                   },
                 ),
-                SwitchListTile(
-                  title: const Text('Analytics'),
+                const Divider(height: 1),
+                _buildPreferenceItem(
+                  icon: Icons.analytics_rounded,
+                  title: 'Analytics',
+                  subtitle: 'Help us improve the app experience',
                   value: preferences['analytics'] ?? false,
                   onChanged: (value) {
                     final newPrefs = Map<String, bool>.from(preferences);
                     newPrefs['analytics'] = value;
                     setPersistentValue('userPreferences', newPrefs);
+                    HapticFeedback.lightImpact();
                   },
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 48),
-          ElevatedButton(
-            onPressed: _completeOnboarding,
-            child: const Text('Complete Setup'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreferenceItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 24,
+        ),
+      ),
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+        ),
+      ),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    final currentPage = getPersistentValue<int>('currentPage');
+    final canContinue = currentPage == 0 ||
+        (currentPage == 1 && getPersistentValue<String>('userName').trim().isNotEmpty);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          if (currentPage > 0)
+            OutlinedButton(
+              onPressed: () {
+                final prevPage = currentPage - 1;
+                setPersistentValue('currentPage', prevPage);
+                _pageController.animateToPage(
+                  prevPage,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                );
+                _updateProgress();
+                HapticFeedback.lightImpact();
+              },
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('Back'),
+            ),
+          const Spacer(),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            child: FilledButton(
+              onPressed: canContinue ? _nextPage : null,
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
+              child: Text(currentPage == 2 ? 'Get Started' : 'Continue'),
+            ),
           ),
         ],
       ),
@@ -359,11 +782,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-/// Main home screen demonstrating reactive persistent state.
-///
-/// This screen shows how persistent state automatically updates
-/// the UI when values change, creating a reactive experience
-/// without manual state management.
+/// Modern home screen with beautiful cards and persistent state.
 @PersistentState()
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -373,7 +792,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with PersistentStateMixin<HomeScreen> {
+    with PersistentStateMixin<HomeScreen>, TickerProviderStateMixin {
+
+  late AnimationController _fabController;
+  late Animation<double> _fabAnimation;
 
   @override
   Map<String, PersistentFieldConfig> get persistentFields => {
@@ -382,37 +804,85 @@ class _HomeScreenState extends State<HomeScreen>
     'favoriteItems': persistentField('favorite_items', defaultValue: <String>[]),
     'lastVisit': persistentField('last_home_visit',
         defaultValue: DateTime.now().millisecondsSinceEpoch),
+    'achievements': persistentField('user_achievements', defaultValue: <String>[]),
   };
 
   @override
   void initState() {
     super.initState();
+    _fabController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _fabAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fabController, curve: Curves.easeOut),
+    );
     _initializeHome();
-  }
-
-  @override
-  void dispose() {
-    disposePersistence();
-    super.dispose();
   }
 
   Future<void> _initializeHome() async {
     await initializePersistence();
     await setPersistentValue('lastVisit', DateTime.now().millisecondsSinceEpoch);
+    _fabController.forward();
+    _checkAchievements();
+  }
+
+  void _checkAchievements() {
+    final counter = getPersistentValue<int>('counter');
+    final achievements = List<String>.from(getPersistentValue<List<String>>('achievements'));
+
+    if (counter >= 10 && !achievements.contains('counter_10')) {
+      achievements.add('counter_10');
+      setPersistentValue('achievements', achievements);
+      _showAchievement('First Milestone!', 'You reached 10 taps');
+    }
+
+    if (counter >= 50 && !achievements.contains('counter_50')) {
+      achievements.add('counter_50');
+      setPersistentValue('achievements', achievements);
+      _showAchievement('Tap Master!', 'You reached 50 taps');
+    }
+  }
+
+  void _showAchievement(String title, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.emoji_events_rounded, color: Colors.orange),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(message),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   void _incrementCounter() {
     final current = getPersistentValue<int>('counter');
     setPersistentValue('counter', current + 1);
     HapticFeedback.lightImpact();
+    _checkAchievements();
   }
 
-  void _addFavorite(String item) {
-    final favorites = List<String>.from(getPersistentValue<List<String>>('favoriteItems'));
-    if (!favorites.contains(item)) {
-      favorites.add(item);
-      setPersistentValue('favoriteItems', favorites);
-    }
+  @override
+  void dispose() {
+    _fabController.dispose();
+    disposePersistence();
+    super.dispose();
   }
 
   @override
@@ -424,120 +894,415 @@ class _HomeScreenState extends State<HomeScreen>
     final userName = getPersistentValue<String>('userName');
     final counter = getPersistentValue<int>('counter');
     final favorites = getPersistentValue<List<String>>('favoriteItems');
+    final achievements = getPersistentValue<List<String>>('achievements');
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Welcome back, $userName!'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => Navigator.pushNamed(context, '/search'),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: Text('Hello, $userName!'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_rounded),
+                onPressed: () => Navigator.pushNamed(context, '/profile'),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_rounded),
+                onPressed: () => Navigator.pushNamed(context, '/settings'),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => Navigator.pushNamed(context, '/profile'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.pushNamed(context, '/settings'),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildStatsCard(counter, achievements.length),
+                const SizedBox(height: 16),
+                _buildFavoritesCard(favorites),
+                const SizedBox(height: 16),
+                _buildAchievementsCard(achievements),
+                const SizedBox(height: 16),
+                _buildQuickActionsCard(),
+                const SizedBox(height: 100), // Space for FAB
+              ]),
+            ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      floatingActionButton: ScaleTransition(
+        scale: _fabAnimation,
+        child: FloatingActionButton.extended(
+          onPressed: _incrementCounter,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Tap me!'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsCard(int counter, int achievementCount) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Text(
-                      'Counter: $counter',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _incrementCounter,
-                      child: const Text('Increment'),
-                    ),
-                  ],
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.analytics_rounded,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 24,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Progress',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Stats update in real-time',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Favorites',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            if (favorites.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('No favorites yet. Tap the + button to add some!'),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatItem(
+                    'Taps',
+                    counter.toString(),
+                    Icons.touch_app_rounded,
+                    Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-              )
-            else
-              Card(
-                child: Column(
-                  children: favorites.map((item) => ListTile(
-                    leading: const Icon(Icons.favorite),
-                    title: Text(item),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () {
-                        final newFavorites = List<String>.from(favorites);
-                        newFavorites.remove(item);
-                        setPersistentValue('favoriteItems', newFavorites);
-                      },
-                    ),
-                  )).toList(),
+                Container(
+                  width: 1,
+                  height: 60,
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
                 ),
-              ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Actions',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ActionChip(
-                          label: const Text('Add Favorite'),
-                          avatar: const Icon(Icons.add),
-                          onPressed: () => _showAddFavoriteDialog(),
-                        ),
-                        ActionChip(
-                          label: const Text('Reset Counter'),
-                          avatar: const Icon(Icons.refresh),
-                          onPressed: () => setPersistentValue('counter', 0),
-                        ),
-                        ActionChip(
-                          label: const Text('Clear Favorites'),
-                          avatar: const Icon(Icons.clear),
-                          onPressed: () => setPersistentValue('favoriteItems', <String>[]),
-                        ),
-                      ],
-                    ),
-                  ],
+                Expanded(
+                  child: _buildStatItem(
+                    'Achievements',
+                    achievementCount.toString(),
+                    Icons.emoji_events_rounded,
+                    Colors.orange,
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddFavoriteDialog,
-        child: const Icon(Icons.add),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFavoritesCard(List<String> favorites) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.favorite_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Favorites',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: _showAddFavoriteDialog,
+                  icon: const Icon(Icons.add_rounded),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (favorites.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.favorite_border_rounded,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No favorites yet',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    Text(
+                      'Tap the + button to add some!',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: favorites.map((item) => _buildFavoriteChip(item)).toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFavoriteChip(String item) {
+    return Chip(
+      label: Text(item),
+      avatar: const Icon(Icons.favorite, size: 16),
+      deleteIcon: const Icon(Icons.close_rounded, size: 18),
+      onDeleted: () {
+        final newFavorites = List<String>.from(getPersistentValue<List<String>>('favoriteItems'));
+        newFavorites.remove(item);
+        setPersistentValue('favoriteItems', newFavorites);
+        HapticFeedback.lightImpact();
+      },
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+      deleteIconColor: Theme.of(context).colorScheme.onPrimaryContainer,
+    );
+  }
+
+  Widget _buildAchievementsCard(List<String> achievements) {
+    final allAchievements = [
+      {'id': 'counter_10', 'title': 'First Milestone', 'desc': 'Reach 10 taps', 'icon': Icons.flag_rounded},
+      {'id': 'counter_50', 'title': 'Tap Master', 'desc': 'Reach 50 taps', 'icon': Icons.emoji_events_rounded},
+      {'id': 'counter_100', 'title': 'Century Club', 'desc': 'Reach 100 taps', 'icon': Icons.star_rounded},
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.emoji_events_rounded,
+                  color: Colors.orange,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Achievements',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...allAchievements.map((achievement) {
+              final isUnlocked = achievements.contains(achievement['id']);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isUnlocked
+                      ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+                      : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isUnlocked
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                        : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isUnlocked
+                            ? Colors.orange.withOpacity(0.2)
+                            : Theme.of(context).colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        achievement['icon'] as IconData,
+                        color: isUnlocked ? Colors.orange : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            achievement['title'] as String,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: isUnlocked ? null : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                          Text(
+                            achievement['desc'] as String,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isUnlocked)
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.orange,
+                        size: 24,
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick Actions',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickActionButton(
+                    'Reset Counter',
+                    Icons.refresh_rounded,
+                        () {
+                      setPersistentValue('counter', 0);
+                      HapticFeedback.mediumImpact();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildQuickActionButton(
+                    'Clear Favorites',
+                    Icons.clear_all_rounded,
+                        () {
+                      setPersistentValue('favoriteItems', <String>[]);
+                      HapticFeedback.mediumImpact();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(String label, IconData icon, VoidCallback onPressed) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -553,33 +1318,36 @@ class _HomeScreenState extends State<HomeScreen>
           controller: controller,
           decoration: const InputDecoration(
             hintText: 'Enter item name',
+            border: OutlineInputBorder(),
           ),
           autofocus: true,
+          textCapitalization: TextCapitalization.words,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                _addFavorite(controller.text.trim());
+                final favorites = List<String>.from(getPersistentValue<List<String>>('favoriteItems'));
+                favorites.add(controller.text.trim());
+                setPersistentValue('favoriteItems', favorites);
                 Navigator.pop(context);
+                HapticFeedback.lightImpact();
               }
             },
             child: const Text('Add'),
           ),
         ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
 }
 
-/// Profile screen with form handling and persistent text fields.
-///
-/// This screen demonstrates how to use persistent text fields
-/// in forms with validation, auto-save, and reactive updates.
+/// Modern profile screen with beautiful form fields.
 @PersistentState()
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -599,7 +1367,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     'email': persistentField('user_email', defaultValue: ''),
     'phone': persistentField('user_phone', defaultValue: ''),
     'bio': persistentField('user_bio', defaultValue: ''),
-    'profileData': persistentField('profile_data', defaultValue: <String, dynamic>{}),
+    'location': persistentField('user_location', defaultValue: ''),
   };
 
   @override
@@ -625,7 +1393,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save),
+            icon: const Icon(Icons.save_rounded),
             onPressed: _saveProfile,
           ),
         ],
@@ -633,76 +1401,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CircleAvatar(
-                radius: 50,
-                child: Icon(Icons.person, size: 50),
-              ),
-              const SizedBox(height: 24),
-              PersistentTextFormField(
-                storageKey: 'onboarding_name',
-                decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Name is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              PersistentTextFormField(
-                storageKey: 'user_email',
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || !value.contains('@')) {
-                    return 'Valid email is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              PersistentTextFormField(
-                storageKey: 'user_phone',
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              PersistentTextFormField(
-                storageKey: 'user_bio',
-                decoration: const InputDecoration(
-                  labelText: 'Bio',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                ),
-                maxLines: 4,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saveProfile,
-                  child: const Text('Save Profile'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: _resetProfile,
-                child: const Text('Reset to Defaults'),
-              ),
+              _buildProfileHeader(),
+              const SizedBox(height: 32),
+              _buildFormFields(),
+              const SizedBox(height: 32),
+              _buildActionButtons(),
             ],
           ),
         ),
@@ -710,12 +1416,187 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Widget _buildProfileHeader() {
+    final userName = getPersistentValue<String>('userName');
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: Center(
+                child: Text(
+                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              userName.isNotEmpty ? userName : 'User',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              'Persistent State User',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormFields() {
+    return Column(
+      children: [
+        PersistentTextFormField(
+          storageKey: 'onboarding_name',
+          decoration: InputDecoration(
+            labelText: 'Full Name',
+            prefixIcon: const Icon(Icons.person_outline_rounded),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Name is required';
+            }
+            return null;
+          },
+          textCapitalization: TextCapitalization.words,
+          showSaveIndicator: false,
+        ),
+        const SizedBox(height: 16),
+        PersistentTextFormField(
+          storageKey: 'user_email',
+          decoration: InputDecoration(
+            labelText: 'Email',
+            prefixIcon: const Icon(Icons.email_outlined),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          ),
+          keyboardType: TextInputType.emailAddress,
+          validator: (value) {
+            if (value != null && value.isNotEmpty && !value.contains('@')) {
+              return 'Please enter a valid email';
+            }
+            return null;
+          },
+          showSaveIndicator: false,
+        ),
+        const SizedBox(height: 16),
+        PersistentTextFormField(
+          storageKey: 'user_phone',
+          decoration: InputDecoration(
+            labelText: 'Phone Number',
+            prefixIcon: const Icon(Icons.phone_outlined),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          ),
+          keyboardType: TextInputType.phone,
+          showSaveIndicator: false,
+        ),
+        const SizedBox(height: 16),
+        PersistentTextFormField(
+          storageKey: 'user_location',
+          decoration: InputDecoration(
+            labelText: 'Location',
+            prefixIcon: const Icon(Icons.location_on_outlined),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          ),
+          textCapitalization: TextCapitalization.words,
+          showSaveIndicator: false,
+        ),
+        const SizedBox(height: 16),
+        PersistentTextFormField(
+          storageKey: 'user_bio',
+          decoration: InputDecoration(
+            labelText: 'Bio',
+            prefixIcon: const Icon(Icons.edit_outlined),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+            alignLabelWithHint: true,
+          ),
+          maxLines: 4,
+          textCapitalization: TextCapitalization.sentences,
+          showSaveIndicator: false,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _saveProfile,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: const Text('Save Profile'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _resetProfile,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: const Text('Reset to Defaults'),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _saveProfile() {
     if (_formKey.currentState?.validate() ?? false) {
+      HapticFeedback.lightImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile saved successfully!'),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Profile saved successfully!'),
+            ],
+          ),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -726,35 +1607,45 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Profile'),
-        content: const Text('Are you sure you want to reset all profile data?'),
+        content: const Text('Are you sure you want to reset all profile data to defaults?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Reset'),
           ),
         ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
 
     if (confirmed == true) {
       await resetAllPersistentFields();
+      HapticFeedback.mediumImpact();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile reset to defaults')),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.refresh_rounded, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Profile reset to defaults'),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         );
       }
     }
   }
 }
 
-/// Settings screen demonstrating various persistent controls.
-///
-/// This screen shows how to use persistent state with different
-/// types of form controls and complex data structures.
+/// Modern settings screen with beautiful switches and preferences.
 @PersistentState()
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -769,11 +1660,17 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   Map<String, PersistentFieldConfig> get persistentFields => {
     'preferences': persistentField('onboarding_prefs',
-        defaultValue: <String, bool>{}),
-    'themeMode': persistentField('theme_mode', defaultValue: 'system'),
-    'language': persistentField('app_language', defaultValue: 'en'),
-    'fontSize': persistentField('font_size', defaultValue: 14.0),
-    'autoSave': persistentField('auto_save_enabled', defaultValue: true),
+        defaultValue: <String, bool>{
+          'notifications': true,
+          'darkMode': false,
+          'analytics': false,
+        }),
+    'appSettings': persistentField('app_settings',
+        defaultValue: <String, dynamic>{
+          'language': 'English',
+          'fontSize': 16.0,
+          'autoSave': true,
+        }),
   };
 
   @override
@@ -794,108 +1691,305 @@ class _SettingsScreenState extends State<SettingsScreen>
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final preferences = getPersistentValue<Map<String, bool>>('preferences');
-    final themeMode = getPersistentValue<String>('themeMode');
-    final language = getPersistentValue<String>('language');
-    final fontSize = getPersistentValue<double>('fontSize');
-    final autoSave = getPersistentValue<bool>('autoSave');
-
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildPreferencesCard(),
+            const SizedBox(height: 16),
+            _buildAppSettingsCard(),
+            const SizedBox(height: 16),
+            _buildAboutCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreferencesCard() {
+    final preferences = getPersistentValue<Map<String, bool>>('preferences');
+
+    return Card(
+      child: Column(
         children: [
-          ListTile(
-            leading: const Icon(Icons.palette),
-            title: const Text('Theme'),
-            subtitle: Text(themeMode),
-            trailing: DropdownButton<String>(
-              value: themeMode,
-              items: const [
-                DropdownMenuItem(value: 'light', child: Text('Light')),
-                DropdownMenuItem(value: 'dark', child: Text('Dark')),
-                DropdownMenuItem(value: 'system', child: Text('System')),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.tune_rounded,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'Preferences',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
-              onChanged: (value) {
-                if (value != null) {
-                  setPersistentValue('themeMode', value);
-                }
-              },
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.language),
-            title: const Text('Language'),
-            subtitle: Text(language),
-            trailing: DropdownButton<String>(
-              value: language,
-              items: const [
-                DropdownMenuItem(value: 'en', child: Text('English')),
-                DropdownMenuItem(value: 'es', child: Text('Spanish')),
-                DropdownMenuItem(value: 'fr', child: Text('French')),
-                DropdownMenuItem(value: 'de', child: Text('German')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setPersistentValue('language', value);
-                }
-              },
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.text_fields),
-            title: const Text('Font Size'),
-            subtitle: Slider(
-              value: fontSize,
-              min: 10.0,
-              max: 24.0,
-              divisions: 14,
-              label: fontSize.toStringAsFixed(0),
-              onChanged: (value) => setPersistentValue('fontSize', value),
-            ),
-          ),
-          SwitchListTile(
-            leading: const Icon(Icons.save),
-            title: const Text('Auto Save'),
-            subtitle: const Text('Automatically save changes'),
-            value: autoSave,
-            onChanged: (value) => setPersistentValue('autoSave', value),
-          ),
-          const Divider(),
-          SwitchListTile(
-            leading: const Icon(Icons.notifications),
-            title: const Text('Notifications'),
+          _buildSettingItem(
+            icon: Icons.notifications_rounded,
+            title: 'Push Notifications',
+            subtitle: 'Receive important updates and alerts',
             value: preferences['notifications'] ?? true,
             onChanged: (value) {
               final newPrefs = Map<String, bool>.from(preferences);
               newPrefs['notifications'] = value;
               setPersistentValue('preferences', newPrefs);
+              HapticFeedback.lightImpact();
             },
           ),
-          SwitchListTile(
-            leading: const Icon(Icons.analytics),
-            title: const Text('Analytics'),
-            subtitle: const Text('Help improve the app'),
+          const Divider(height: 1),
+          _buildSettingItem(
+            icon: Icons.dark_mode_rounded,
+            title: 'Dark Mode',
+            subtitle: 'Use dark theme for better night viewing',
+            value: preferences['darkMode'] ?? false,
+            onChanged: (value) {
+              final newPrefs = Map<String, bool>.from(preferences);
+              newPrefs['darkMode'] = value;
+              setPersistentValue('preferences', newPrefs);
+              HapticFeedback.lightImpact();
+            },
+          ),
+          const Divider(height: 1),
+          _buildSettingItem(
+            icon: Icons.analytics_rounded,
+            title: 'Analytics',
+            subtitle: 'Help us improve your experience',
             value: preferences['analytics'] ?? false,
             onChanged: (value) {
               final newPrefs = Map<String, bool>.from(preferences);
               newPrefs['analytics'] = value;
               setPersistentValue('preferences', newPrefs);
+              HapticFeedback.lightImpact();
             },
           ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('About'),
-            onTap: () => _showAboutDialog(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppSettingsCard() {
+    final appSettings = getPersistentValue<Map<String, dynamic>>('appSettings');
+
+    return Card(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.settings_rounded,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'App Settings',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
           ListTile(
-            leading: const Icon(Icons.delete),
-            title: const Text('Reset All Data'),
-            textColor: Colors.red,
-            iconColor: Colors.red,
-            onTap: () => _resetAllData(),
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.language_rounded,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+            ),
+            title: const Text('Language'),
+            subtitle: Text(appSettings['language'] ?? 'English'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _showLanguageDialog(appSettings),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.text_fields_rounded,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+            ),
+            title: const Text('Font Size'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${(appSettings['fontSize'] ?? 16.0).toInt()}px'),
+                const SizedBox(height: 8),
+                Slider(
+                  value: (appSettings['fontSize'] ?? 16.0).toDouble(),
+                  min: 12.0,
+                  max: 24.0,
+                  divisions: 12,
+                  onChanged: (value) {
+                    final newSettings = Map<String, dynamic>.from(appSettings);
+                    newSettings['fontSize'] = value;
+                    setPersistentValue('appSettings', newSettings);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          _buildSettingItem(
+            icon: Icons.save_rounded,
+            title: 'Auto Save',
+            subtitle: 'Automatically save changes',
+            value: appSettings['autoSave'] ?? true,
+            onChanged: (value) {
+              final newSettings = Map<String, dynamic>.from(appSettings);
+              newSettings['autoSave'] = value;
+              setPersistentValue('appSettings', newSettings);
+              HapticFeedback.lightImpact();
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAboutCard() {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.info_outline_rounded,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+            title: const Text('About'),
+            subtitle: const Text('Learn more about this app'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: _showAboutDialog,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.red,
+              ),
+            ),
+            title: const Text('Reset All Data'),
+            subtitle: const Text('Clear all persistent data'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: _resetAllData,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 20,
+        ),
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+    );
+  }
+
+  void _showLanguageDialog(Map<String, dynamic> appSettings) {
+    final languages = ['English', 'Spanish', 'French', 'German', 'Japanese'];
+    final currentLanguage = appSettings['language'] ?? 'English';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Language'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: languages.map((language) => RadioListTile<String>(
+            value: language,
+            groupValue: currentLanguage,
+            onChanged: (value) {
+              if (value != null) {
+                final newSettings = Map<String, dynamic>.from(appSettings);
+                newSettings['language'] = value;
+                setPersistentValue('appSettings', newSettings);
+                Navigator.pop(context);
+                HapticFeedback.lightImpact();
+              }
+            },
+            title: Text(language),
+          )).toList(),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
@@ -907,7 +2001,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       applicationVersion: '1.0.0',
       applicationLegalese: '© 2024 Flutter Community',
       children: [
-        const Text('This app demonstrates the flutter_persistent_state package.'),
+        const SizedBox(height: 16),
+        const Text(
+          'This beautiful app demonstrates the flutter_persistent_state package with modern Material 3 design.',
+        ),
       ],
     );
   }
@@ -918,20 +2015,20 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (context) => AlertDialog(
         title: const Text('Reset All Data'),
         content: const Text(
-          'This will delete all your data and reset the app to its initial state. '
-              'This action cannot be undone.',
+          'This will permanently delete all your data and reset the app to its initial state. This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Reset Everything'),
           ),
         ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
 
@@ -944,234 +2041,172 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 }
 
-/// Search screen with persistent search history.
-///
-/// This screen demonstrates how to use persistent text fields
-/// with search functionality and automatic history management.
-class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+/// Additional preferences screen for more granular settings.
+@PersistentState()
+class PreferencesScreen extends StatefulWidget {
+  const PreferencesScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  State<PreferencesScreen> createState() => _PreferencesScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
-  final TextEditingController _controller = TextEditingController();
-  List<String> _searchHistory = [];
-  List<String> _searchResults = [];
-  bool _isLoading = false;
+class _PreferencesScreenState extends State<PreferencesScreen>
+    with PersistentStateMixin<PreferencesScreen> {
+
+  @override
+  Map<String, PersistentFieldConfig> get persistentFields => {
+    'uiPreferences': persistentField('ui_preferences',
+        defaultValue: <String, dynamic>{
+          'showAnimations': true,
+          'hapticFeedback': true,
+          'soundEffects': false,
+          'reducedMotion': false,
+        }),
+  };
 
   @override
   void initState() {
     super.initState();
-    _loadSearchHistory();
+    initializePersistence();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    disposePersistence();
     super.dispose();
-  }
-
-  Future<void> _loadSearchHistory() async {
-    final history = await PersistentTextUtils.getSearchHistory();
-    setState(() {
-      _searchHistory = history;
-    });
-  }
-
-  Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    await PersistentTextUtils.addToSearchHistory(query);
-    await _loadSearchHistory();
-
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    final results = _mockSearch(query);
-
-    setState(() {
-      _searchResults = results;
-      _isLoading = false;
-    });
-  }
-
-  List<String> _mockSearch(String query) {
-    final allItems = [
-      'Flutter Development',
-      'Dart Programming',
-      'State Management',
-      'Persistent Storage',
-      'Mobile Development',
-      'Cross-platform Apps',
-      'UI Design',
-      'User Experience',
-      'Performance Optimization',
-      'Testing Strategies',
-      'Code Architecture',
-      'Material Design',
-      'Cupertino Design',
-      'Animation Techniques',
-      'Navigation Patterns',
-    ];
-
-    return allItems
-        .where((item) => item.toLowerCase().contains(query.toLowerCase()))
-        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!isHydrated) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final preferences = getPersistentValue<Map<String, dynamic>>('uiPreferences');
+
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _controller,
-          decoration: const InputDecoration(
-            hintText: 'Search...',
-            border: InputBorder.none,
+      appBar: AppBar(title: const Text('Preferences')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Card(
+          child: Column(
+            children: [
+              _buildPreferenceHeader(),
+              _buildPreferenceItem(
+                icon: Icons.animation_rounded,
+                title: 'Show Animations',
+                subtitle: 'Enable smooth transitions and effects',
+                value: preferences['showAnimations'] ?? true,
+                onChanged: (value) => _updatePreference('showAnimations', value),
+              ),
+              const Divider(height: 1),
+              _buildPreferenceItem(
+                icon: Icons.vibration_rounded,
+                title: 'Haptic Feedback',
+                subtitle: 'Feel vibrations for button taps',
+                value: preferences['hapticFeedback'] ?? true,
+                onChanged: (value) => _updatePreference('hapticFeedback', value),
+              ),
+              const Divider(height: 1),
+              _buildPreferenceItem(
+                icon: Icons.volume_up_rounded,
+                title: 'Sound Effects',
+                subtitle: 'Play sounds for interactions',
+                value: preferences['soundEffects'] ?? false,
+                onChanged: (value) => _updatePreference('soundEffects', value),
+              ),
+              const Divider(height: 1),
+              _buildPreferenceItem(
+                icon: Icons.accessibility_rounded,
+                title: 'Reduced Motion',
+                subtitle: 'Minimize motion for accessibility',
+                value: preferences['reducedMotion'] ?? false,
+                onChanged: (value) => _updatePreference('reducedMotion', value),
+              ),
+            ],
           ),
-          autofocus: true,
-          onSubmitted: _performSearch,
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => _performSearch(_controller.text),
-          ),
-          if (_searchHistory.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.history),
-              onPressed: () => _showSearchHistory(),
-            ),
-        ],
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildPreferenceHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
         children: [
-          if (_isLoading)
-            const LinearProgressIndicator(),
-          Expanded(
-            child: _buildSearchContent(),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.palette_rounded,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'UI Preferences',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Customize your experience',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSearchContent() {
-    if (_searchResults.isNotEmpty) {
-      return ListView.builder(
-        itemCount: _searchResults.length,
-        itemBuilder: (context, index) {
-          final result = _searchResults[index];
-          return ListTile(
-            leading: const Icon(Icons.search),
-            title: Text(result),
-            onTap: () {
-              _controller.text = result;
-              _performSearch(result);
-            },
-          );
-        },
-      );
-    }
-
-    if (_searchHistory.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Recent Searches',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                TextButton(
-                  onPressed: () async {
-                    await PersistentTextUtils.clearSearchHistory();
-                    await _loadSearchHistory();
-                  },
-                  child: const Text('Clear'),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _searchHistory.length,
-              itemBuilder: (context, index) {
-                final query = _searchHistory[index];
-                return ListTile(
-                  leading: const Icon(Icons.history),
-                  title: Text(query),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.north_west),
-                    onPressed: () {
-                      _controller.text = query;
-                    },
-                  ),
-                  onTap: () {
-                    _controller.text = query;
-                    _performSearch(query);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      );
-    }
-
-    return const Center(
-      child: Text('Start typing to search...'),
+  Widget _buildPreferenceItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 20,
+        ),
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
     );
   }
 
-  void _showSearchHistory() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            title: const Text('Search History'),
-            trailing: TextButton(
-              onPressed: () async {
-                await PersistentTextUtils.clearSearchHistory();
-                await _loadSearchHistory();
-                Navigator.pop(context);
-              },
-              child: const Text('Clear All'),
-            ),
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _searchHistory.length,
-              itemBuilder: (context, index) {
-                final query = _searchHistory[index];
-                return ListTile(
-                  title: Text(query),
-                  onTap: () {
-                    _controller.text = query;
-                    Navigator.pop(context);
-                    _performSearch(query);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+  void _updatePreference(String key, bool value) {
+    final preferences = Map<String, dynamic>.from(
+        getPersistentValue<Map<String, dynamic>>('uiPreferences')
     );
+    preferences[key] = value;
+    setPersistentValue('uiPreferences', preferences);
+    HapticFeedback.lightImpact();
   }
 }

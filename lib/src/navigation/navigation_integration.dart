@@ -1,33 +1,20 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_persistent_state/src/core/persistent_state_manager.dart';
+import 'package:flutter_persistent_state/flutter_persistent_state.dart';
 
-
-/// Route observer that automatically saves and restores navigation state.
 ///
 /// This observer integrates with Flutter's navigation system to persist
 /// the current route stack and restore it when the app is restarted.
-/// It provides seamless navigation state management without manual
-/// intervention from the developer.
-///
-/// The observer can be configured to save navigation parameters,
-/// route arguments, and maintain deep-link compatibility.
+/// It provides seamless navigation state management with proper context handling.
 class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   final PersistentStateManager _stateManager;
   final String _routeStackKey;
   final String _currentRouteKey;
   final bool _saveArguments;
+  final bool _enableDeepLinks;
   final Set<String> _excludedRoutes;
 
-  /// Create a new persistent navigation observer.
-  ///
-  /// @param stateManager the state manager to use for persistence
-  /// @param routeStackKey storage key for the route stack
-  /// @param currentRouteKey storage key for the current route
-  /// @param saveArguments whether to persist route arguments
-  /// @param enableDeepLinks whether to restore deep links on app start
-  /// @param excludedRoutes set of route names to exclude from persistence
   PersistentNavigationObserver({
     PersistentStateManager? stateManager,
     String routeStackKey = 'navigation_route_stack',
@@ -39,6 +26,7 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
         _routeStackKey = routeStackKey,
         _currentRouteKey = currentRouteKey,
         _saveArguments = saveArguments,
+        _enableDeepLinks = enableDeepLinks,
         _excludedRoutes = excludedRoutes ?? {};
 
   @override
@@ -66,10 +54,6 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   }
 
   /// Save the current navigation state to persistent storage.
-  ///
-  /// This method captures the current route information and saves it
-  /// for restoration when the app is restarted. It handles route names,
-  /// arguments, and maintains the navigation stack.
   Future<void> _saveNavigationState(PageRoute route) async {
     if (!_stateManager.isInitialized) {
       return;
@@ -99,9 +83,6 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   }
 
   /// Update the persistent route stack.
-  ///
-  /// Maintains a stack of recent routes to enable proper navigation
-  /// restoration and back button behavior.
   Future<void> _updateRouteStack(Map<String, dynamic> routeData) async {
     try {
       final stackData = await _stateManager.getValue<List<String>>(_routeStackKey) ?? [];
@@ -123,10 +104,6 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   }
 
   /// Serialize route arguments for persistence.
-  ///
-  /// Converts route arguments to a JSON-serializable format.
-  /// Handles common argument types and provides fallbacks for
-  /// complex objects.
   Map<String, dynamic>? _serializeArguments(Object? arguments) {
     if (arguments == null) {
       return null;
@@ -147,8 +124,6 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   }
 
   /// Get the last saved route information.
-  ///
-  /// @returns the most recently saved route data, or null if none exists
   Future<Map<String, dynamic>?> getLastRoute() async {
     if (!_stateManager.isInitialized) {
       await _stateManager.initialize();
@@ -158,8 +133,6 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   }
 
   /// Get the complete route history.
-  ///
-  /// @returns list of route data in chronological order
   Future<List<Map<String, dynamic>>> getRouteHistory() async {
     if (!_stateManager.isInitialized) {
       await _stateManager.initialize();
@@ -175,38 +148,22 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   }
 
   /// Clear all saved navigation state.
-  ///
-  /// Removes all persistent navigation data. Useful for logout
-  /// operations or when resetting the app state.
   Future<void> clearNavigationState() async {
     await _stateManager.removeValue(_currentRouteKey);
     await _stateManager.removeValue(_routeStackKey);
   }
 }
 
-/// Widget that automatically restores navigation state on app start.
+/// Fixed widget that automatically restores navigation state on app start.
 ///
-/// This widget should be placed at the root of your app to enable
-/// automatic navigation restoration. It integrates with the
-/// PersistentNavigationObserver to restore the last known route
-/// when the app is restarted.
+/// This widget properly handles the Navigator context and delays restoration
+/// until the Navigator is ready.
 class PersistentNavigationWrapper extends StatefulWidget {
-  /// The child widget to wrap (typically MaterialApp or CupertinoApp).
   final Widget child;
-
-  /// The navigation observer to use for state persistence.
   final PersistentNavigationObserver observer;
-
-  /// Whether to restore navigation state on app start.
   final bool restoreOnStart;
-
-  /// Maximum age of saved routes to consider for restoration.
   final Duration maxRouteAge;
-
-  /// Callback to determine if a route should be restored.
   final bool Function(Map<String, dynamic> routeData)? shouldRestore;
-
-  /// Callback when navigation restoration completes.
   final void Function(bool restored, String? routeName)? onRestorationComplete;
 
   const PersistentNavigationWrapper({
@@ -224,30 +181,51 @@ class PersistentNavigationWrapper extends StatefulWidget {
 }
 
 class _PersistentNavigationWrapperState extends State<PersistentNavigationWrapper> {
-  bool _hasRestored = false;
+  bool _hasAttemptedRestore = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.restoreOnStart) {
+      // Delay restoration until after the first frame to ensure Navigator is ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _restoreNavigationState();
+        _scheduleRestoration();
       });
     }
   }
 
-  /// Restore the last known navigation state.
-  ///
-  /// This method checks for saved navigation data and attempts to
-  /// restore the user to their last known location in the app.
+  /// Schedule navigation restoration with proper timing.
+  void _scheduleRestoration() {
+    // Add additional delay to ensure Navigator is fully initialized
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted && !_hasAttemptedRestore) {
+        _restoreNavigationState();
+      }
+    });
+  }
+
+  /// Restore the last known navigation state with proper error handling.
   Future<void> _restoreNavigationState() async {
-    if (_hasRestored) {
+    if (_hasAttemptedRestore) {
       return;
     }
 
-    _hasRestored = true;
+    _hasAttemptedRestore = true;
 
     try {
+      // Ensure we have a valid Navigator context
+      if (!mounted) {
+        widget.onRestorationComplete?.call(false, null);
+        return;
+      }
+
+      final navigator = Navigator.maybeOf(context);
+      if (navigator == null) {
+        debugPrint('Navigator not available for restoration');
+        widget.onRestorationComplete?.call(false, null);
+        return;
+      }
+
       final lastRoute = await widget.observer.getLastRoute();
       if (lastRoute == null) {
         widget.onRestorationComplete?.call(false, null);
@@ -259,16 +237,23 @@ class _PersistentNavigationWrapperState extends State<PersistentNavigationWrappe
         return;
       }
 
-      final navigator = Navigator.of(context);
       final routeName = lastRoute['name'] as String;
       final arguments = lastRoute['arguments'] as Map<String, dynamic>?;
 
-      navigator.pushNamedAndRemoveUntil(
+      // Double-check we still have a mounted widget and valid context
+      if (!mounted) {
+        widget.onRestorationComplete?.call(false, routeName);
+        return;
+      }
+
+      // Use pushNamedAndRemoveUntil for cleaner navigation stack
+      await navigator.pushNamedAndRemoveUntil(
         routeName,
             (route) => false,
         arguments: arguments,
       );
 
+      debugPrint('Navigation restored: true to $routeName');
       widget.onRestorationComplete?.call(true, routeName);
 
     } catch (e) {
@@ -278,12 +263,14 @@ class _PersistentNavigationWrapperState extends State<PersistentNavigationWrappe
   }
 
   /// Determine if a saved route should be restored.
-  ///
-  /// Checks route age, custom restoration logic, and other factors
-  /// to decide whether navigation should be restored.
   bool _shouldRestoreRoute(Map<String, dynamic> routeData) {
     if (widget.shouldRestore != null) {
-      return widget.shouldRestore!(routeData);
+      try {
+        return widget.shouldRestore!(routeData);
+      } catch (e) {
+        debugPrint('Error in shouldRestore callback: $e');
+        return false;
+      }
     }
 
     final timestamp = routeData['timestamp'] as int?;
@@ -306,36 +293,20 @@ class _PersistentNavigationWrapperState extends State<PersistentNavigationWrappe
 }
 
 /// Builder function for creating routes with automatic persistence.
-///
-/// This function creates route builders that automatically integrate
-/// with the persistent navigation system. Routes created with this
-/// builder will have their state automatically saved and restored.
 typedef PersistentRouteBuilder = Widget Function(
     BuildContext context,
     Map<String, dynamic>? persistentData,
     );
 
 /// Factory for creating persistent-aware routes.
-///
-/// This class provides helper methods for creating routes that integrate
-/// seamlessly with the persistent navigation system. It handles argument
-/// serialization, state restoration, and lifecycle management.
 class PersistentRouteFactory {
   final PersistentStateManager _stateManager;
 
-  /// Create a new route factory.
-  ///
-  /// @param stateManager the state manager to use for persistence
   PersistentRouteFactory({
     PersistentStateManager? stateManager,
   }) : _stateManager = stateManager ?? PersistentStateManager.instance;
 
   /// Create a persistent route that automatically saves and restores its state.
-  ///
-  /// @param routeName the name of the route
-  /// @param builder the widget builder function
-  /// @param persistentKeys list of keys to persist for this route
-  /// @returns a route builder function
   RouteFactory createPersistentRoute(
       String routeName,
       PersistentRouteBuilder builder, {
@@ -356,9 +327,6 @@ class PersistentRouteFactory {
   }
 
   /// Create a route map for use with MaterialApp.routes.
-  ///
-  /// @param routeDefinitions map of route names to builders
-  /// @returns a route map suitable for MaterialApp
   Map<String, WidgetBuilder> createRouteMap(
       Map<String, PersistentRouteBuilder> routeDefinitions,
       ) {
@@ -378,10 +346,6 @@ class PersistentRouteFactory {
 }
 
 /// Internal widget that provides persistence capabilities to routes.
-///
-/// This widget wraps route content to provide automatic state persistence
-/// and restoration. It manages the lifecycle of persistent data and
-/// coordinates with the navigation system.
 class _PersistentRouteWidget extends StatefulWidget {
   final String routeName;
   final PersistentStateManager stateManager;
@@ -412,28 +376,39 @@ class _PersistentRouteWidgetState extends State<_PersistentRouteWidget> {
   }
 
   /// Load persistent data for this route.
-  ///
-  /// Retrieves any previously saved state data for this route
-  /// and makes it available to the route builder.
   Future<void> _loadPersistentData() async {
-    if (!widget.stateManager.isInitialized) {
-      await widget.stateManager.initialize();
-    }
-
-    final data = <String, dynamic>{};
-
-    for (final key in widget.persistentKeys) {
-      final value = await widget.stateManager.getValue(key);
-      if (value != null) {
-        data[key] = value;
+    try {
+      if (!widget.stateManager.isInitialized) {
+        await widget.stateManager.initialize();
       }
-    }
 
-    if (mounted) {
-      setState(() {
-        _persistentData = data;
-        _isLoaded = true;
-      });
+      final data = <String, dynamic>{};
+
+      for (final key in widget.persistentKeys) {
+        try {
+          final value = await widget.stateManager.getValue(key);
+          if (value != null) {
+            data[key] = value;
+          }
+        } catch (e) {
+          debugPrint('Failed to load persistent data for key $key: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _persistentData = data;
+          _isLoaded = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load persistent data for route ${widget.routeName}: $e');
+      if (mounted) {
+        setState(() {
+          _persistentData = {};
+          _isLoaded = true;
+        });
+      }
     }
   }
 

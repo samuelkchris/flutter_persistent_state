@@ -24,6 +24,7 @@ class PersistentStateManager extends ChangeNotifier {
   final Map<String, StreamController<dynamic>> _controllers = {};
   final Map<String, Timer> _debounceTimers = {};
   final Map<String, dynamic> _defaultValues = {};
+  final Map<String, Type> _valueTypes = {};
   final Set<String> _dirtyKeys = HashSet<String>();
   final Duration _batchPersistInterval;
 
@@ -128,6 +129,7 @@ class PersistentStateManager extends ChangeNotifier {
   void registerDefault(String key, dynamic defaultValue) {
     _ensureInitialized();
     _defaultValues[key] = defaultValue;
+    _valueTypes[key] = defaultValue.runtimeType;
   }
 
   /// Get a value by key with automatic type casting.
@@ -146,24 +148,73 @@ class PersistentStateManager extends ChangeNotifier {
     }
 
     dynamic value;
-    if (T == String) {
-      value = await _backend.getString(key);
-    } else if (T == int) {
-      value = await _backend.getInt(key);
-    } else if (T == double) {
-      value = await _backend.getDouble(key);
-    } else if (T == bool) {
-      value = await _backend.getBool(key);
-    } else if (T == List<String>) {
-      value = await _backend.getStringList(key);
-    } else {
-      value = await _backend.getJson(key);
+    try {
+      final registeredType = _valueTypes[key] ?? T;
+
+      if (registeredType == String || T == String) {
+        value = await _backend.getString(key);
+      } else if (registeredType == int || T == int) {
+        value = await _backend.getInt(key);
+      } else if (registeredType == double || T == double) {
+        value = await _backend.getDouble(key);
+      } else if (registeredType == bool || T == bool) {
+        value = await _backend.getBool(key);
+      } else if (registeredType.toString().startsWith('List<String>') || T.toString().startsWith('List<String>')) {
+        value = await _backend.getStringList(key);
+      } else {
+        value = await _backend.getJson(key);
+      }
+    } catch (e) {
+      debugPrint('Failed to load value for key $key: $e');
+      value = null;
     }
 
     value ??= _defaultValues[key];
-    _cache[key] = value;
 
-    return value as T?;
+    if (value != null) {
+      _cache[key] = value;
+    }
+
+    return _safeCast<T>(value);
+  }
+
+  /// Safely cast a value to the target type with fallback handling.
+  T? _safeCast<T>(dynamic value) {
+    if (value == null) return null;
+
+    try {
+      if (value is T) return value;
+
+      if (T.toString().startsWith('Map<String,') && value is Map) {
+        return Map<String, dynamic>.from(value) as T;
+      }
+
+      if (T.toString().startsWith('List<') && value is List) {
+        if (T.toString().contains('String')) {
+          return List<String>.from(value.map((e) => e.toString())) as T;
+        }
+        return List.from(value) as T;
+      }
+
+      if (T == String) {
+        return value.toString() as T;
+      } else if (T == int && value is num) {
+        return value.toInt() as T;
+      } else if (T == double && value is num) {
+        return value.toDouble() as T;
+      } else if (T == bool) {
+        if (value is bool) return value as T;
+        if (value is String) {
+          return (value.toLowerCase() == 'true') as T;
+        }
+        return (value == 1) as T;
+      }
+
+      return value as T;
+    } catch (e) {
+      debugPrint('Type casting failed for value $value to type $T: $e');
+      return null;
+    }
   }
 
   /// Set a value by key with optional debouncing.
@@ -188,6 +239,7 @@ class PersistentStateManager extends ChangeNotifier {
     }
 
     _cache[key] = value;
+    _valueTypes[key] = T;
     notifyListeners();
     _notifyKeyListeners(key, value);
 
@@ -214,6 +266,7 @@ class PersistentStateManager extends ChangeNotifier {
 
     final hadValue = _cache.containsKey(key);
     _cache.remove(key);
+    _valueTypes.remove(key);
     _dirtyKeys.remove(key);
 
     final removed = await _backend.remove(key);
@@ -246,6 +299,11 @@ class PersistentStateManager extends ChangeNotifier {
     getValue<T>(key).then((value) {
       if (!controller.isClosed) {
         controller.add(value);
+      }
+    }).catchError((error) {
+      debugPrint('Error getting initial value for stream $key: $error');
+      if (!controller.isClosed) {
+        controller.add(_defaultValues[key]);
       }
     });
 
@@ -298,6 +356,7 @@ class PersistentStateManager extends ChangeNotifier {
     _cache.clear();
     _dirtyKeys.clear();
     _defaultValues.clear();
+    _valueTypes.clear();
 
     for (final timer in _debounceTimers.values) {
       timer.cancel();
@@ -349,16 +408,18 @@ class PersistentStateManager extends ChangeNotifier {
           return;
         }
 
-        if (value is String) {
-          await _backend.setString(key, value);
-        } else if (value is int) {
-          await _backend.setInt(key, value);
-        } else if (value is double) {
-          await _backend.setDouble(key, value);
-        } else if (value is bool) {
-          await _backend.setBool(key, value);
-        } else if (value is List<String>) {
-          await _backend.setStringList(key, value);
+        final valueType = _valueTypes[key] ?? value.runtimeType;
+
+        if (valueType == String || value is String) {
+          await _backend.setString(key, value.toString());
+        } else if (valueType == int || value is int) {
+          await _backend.setInt(key, value as int);
+        } else if (valueType == double || value is double) {
+          await _backend.setDouble(key, value as double);
+        } else if (valueType == bool || value is bool) {
+          await _backend.setBool(key, value as bool);
+        } else if (valueType.toString().startsWith('List<String>') || value is List<String>) {
+          await _backend.setStringList(key, List<String>.from(value as List));
         } else {
           await _backend.setJson(key, value);
         }

@@ -107,11 +107,11 @@
 /// applications while providing powerful persistence capabilities with minimal setup.
 library flutter_persistent_state;
 
-export 'annotations/persistent_annotations.dart';
-export 'backends/persistence_backend.dart';
-export 'backends/shared_preferences_backend.dart';
-export 'core/persistent_state_manager.dart';
-export 'core/persistent_state_mixin.dart';
-export 'navigation/navigation_integration.dart';
-export 'widgets/text_field_integration.dart';
-export 'utils/persistent_text_utils.dart';
+export 'src/annotations/persistent_annotations.dart';
+export 'src/backends/persistence_backend.dart';
+export 'src/backends/shared_preferences_backend.dart';
+export 'src/core/persistent_state_manager.dart';
+export 'src/core/persistent_state_mixin.dart';
+export 'src/navigation/navigation_integration.dart';
+export 'src/widgets/text_field_integration.dart';
+export 'src/utils/persistent_text_utils.dart';
