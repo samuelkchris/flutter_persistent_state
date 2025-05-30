@@ -12,7 +12,6 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
   final String _routeStackKey;
   final String _currentRouteKey;
   final bool _saveArguments;
-  final bool _enableDeepLinks;
   final Set<String> _excludedRoutes;
 
   PersistentNavigationObserver({
@@ -26,7 +25,6 @@ class PersistentNavigationObserver extends RouteObserver<PageRoute<dynamic>> {
         _routeStackKey = routeStackKey,
         _currentRouteKey = currentRouteKey,
         _saveArguments = saveArguments,
-        _enableDeepLinks = enableDeepLinks,
         _excludedRoutes = excludedRoutes ?? {};
 
   @override
