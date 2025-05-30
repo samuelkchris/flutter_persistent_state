@@ -1,0 +1,5 @@
+// Git ignore rules
+// File: .gitignore
+
+# Project exclude paths
+/.dart_tool/

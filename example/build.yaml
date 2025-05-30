@@ -1,0 +1,17 @@
+targets:
+  $default:
+    builders:
+      flutter_persistent_state:persistent_state_builder:
+        enabled: true
+        generate_for:
+          - lib/**_widget.dart
+          - lib/**_page.dart
+          - lib/**_screen.dart
+
+builders:
+  persistent_state_builder:
+    import: "package:flutter_persistent_state/src/code_generator.dart"
+    builder_factories: ["persistentStateBuilder"]
+    build_extensions: {".dart": [".persistent.dart"]}
+    auto_apply: dependents
+    build_to: source
