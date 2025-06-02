@@ -10,7 +10,7 @@ targets:
 
 builders:
   persistent_state_builder:
-    import: "package:flutter_persistent_state/src/code_generator.dart"
+    import: "package:flutter_persistent_state/src/generators/code_generator.dart"
     builder_factories: ["persistentStateBuilder"]
     build_extensions: {".dart": [".persistent.dart"]}
     auto_apply: dependents
