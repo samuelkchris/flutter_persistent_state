@@ -7,6 +7,7 @@ import 'package:code_builder/code_builder.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:flutter_persistent_state/src/annotations/persistent_annotations.dart';
 import 'package:source_gen/source_gen.dart';
+import 'package:pub_semver/pub_semver.dart';
 
 
 /// Code generator for persistent state annotations.
@@ -184,7 +185,8 @@ class PersistentStateGenerator extends GeneratorForAnnotation<PersistentState> {
     );
 
     final source = library.accept(emitter).toString();
-    return DartFormatter().format(source);
+    return DartFormatter(languageVersion: Version.parse('3.8.0'))
+        .format(source);
   }
 
   /// Generate a class that holds field configurations.
