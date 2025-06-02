@@ -1,7 +1,7 @@
 # pubspec.yaml
 name: flutter_persistent_state
 description: Eliminate boilerplate for app-global persistent state management in Flutter. Automatic hydration, reactive updates, and seamless integration with navigation and text fields.
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/samuelkchris/flutter_persistent_state
 repository: https://github.com/samuelkchris/flutter_persistent_state
 issue_tracker: https://github.com/samuelkchris/flutter_persistent_state/issues
