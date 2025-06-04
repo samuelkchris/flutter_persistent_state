@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "82.0.0"
   analyzer:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: analyzer
       sha256: "904ae5bb474d32c38fb9482e2d925d5454cda04ddd0e55d2e6826bc72f6ba8c0"
@@ -42,7 +42,7 @@ packages:
     source: hosted
     version: "2.1.2"
   build:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: build
       sha256: cef23f1eda9b57566c81e2133d196f8e3df48f244b317368d65c5943d91148f0
@@ -130,7 +130,7 @@ packages:
     source: hosted
     version: "1.1.2"
   code_builder:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: code_builder
       sha256: "0ec10bf4a89e4c613960bf1e8b42c64127021740fb21640c29c909826a5eea3e"
@@ -162,7 +162,7 @@ packages:
     source: hosted
     version: "3.0.6"
   dart_style:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: dart_style
       sha256: "5b236382b47ee411741447c1f1e111459c941ea1b3f2b540dde54c210a3662af"
@@ -433,7 +433,7 @@ packages:
     source: hosted
     version: "1.5.1"
   pub_semver:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: pub_semver
       sha256: "5bfcf68ca79ef689f8990d1160781b4bad40a3bd5e5218ad4076ddb7f4081585"
@@ -526,7 +526,7 @@ packages:
     source: sdk
     version: "0.0.0"
   source_gen:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: source_gen
       sha256: "35c8150ece9e8c8d263337a265153c3329667640850b9304861faea59fc98f6b"

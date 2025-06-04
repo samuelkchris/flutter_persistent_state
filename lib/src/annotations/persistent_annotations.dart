@@ -40,8 +40,8 @@ class PersistentState {
 /// to the configured backend and hydrated when the widget is created.
 /// The field type must be serializable by the chosen backend.
 ///
-/// Supported types include: String, int, double, bool, List<String>,
-/// List<int>, List<double>, Map<String, dynamic>, and custom objects
+/// Supported types include: String, int, double, bool, List\<String>,
+/// List\<int>, List\<double>, Map\<String, dynamic>, and custom objects
 /// that implement proper serialization.
 class PersistentField {
   /// Unique key for storing this field in the persistence backend.
@@ -108,3 +108,4 @@ class OnHydrated {
 
   const OnHydrated({this.forKeys});
 }
+

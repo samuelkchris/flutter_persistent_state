@@ -118,7 +118,7 @@ class PersistentStateGenerator extends GeneratorForAnnotation<PersistentState> {
   ConstantReader? _getPersistentFieldAnnotation(FieldElement field) {
     for (final metadata in field.metadata) {
       final annotation = metadata.computeConstantValue();
-      if (annotation?.type?.element?.name == 'PersistentField') {
+      if (annotation?.type?.element3?.name3 == 'PersistentField') {
         return ConstantReader(annotation);
       }
     }
@@ -569,7 +569,7 @@ class PersistentFieldInfo {
 
   /// Check if this field is a primitive type that can be stored directly.
   bool get isPrimitive {
-    final element = type.element;
+    final element = type.element3;
     if (element == null) return false;
 
     final primitiveTypes = {

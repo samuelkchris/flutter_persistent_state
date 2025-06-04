@@ -112,7 +112,6 @@ export 'src/backends/persistence_backend.dart';
 export 'src/backends/shared_preferences_backend.dart';
 export 'src/core/persistent_state_manager.dart';
 export 'src/core/persistent_state_mixin.dart';
-export 'src/generators/code_generator.dart';
 export 'src/navigation/navigation_integration.dart';
 export 'src/widgets/text_field_integration.dart';
 export 'src/utils/persistent_text_utils.dart';
